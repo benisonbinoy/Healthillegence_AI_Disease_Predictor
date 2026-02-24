@@ -413,27 +413,27 @@ def generate_gradcam_overlay(
     img_array: np.ndarray,
     original_rgb: np.ndarray,
     sub_model_name: str = 'efficientnetb0',
-    target_layer: str = 'top_activation',
+    target_layer: str = 'top_conv',
 ) -> str | None:
     """
-    Keras-3-compatible Grad-CAM heatmap overlay (binary classifier).
+    Three-stage chained Grad-CAM for EfficientNetB0 binary classifier.
 
-    Splits the parent model at the EfficientNetB0 boundary:
-      1. Apply pre-EfficientNet layers (augmentation, no-ops at inference)
-      2. Run EfficientNetB0 → conv feature maps (7×7×1280)
-      3. tape.watch(conv_outputs)
-      4. Apply post-EfficientNet head layers → scalar logit
-      5. tape.gradient(logit, conv_outputs)
+    Stage 1 — feat_extractor : model_input  → top_conv feature maps
+    Stage 2 — effnet_tail    : top_conv out → EfficientNet output
+    Stage 3 — head_model     : EfficientNet output → final sigmoid score
+
+    A tf.Variable wraps the feature maps so the GradientTape treats them as
+    a differentiable node and can compute dLoss/dConvFeatures exactly.
 
     Returns:
-        data-URI string (data:image/png;base64,...) or None on failure.
+        data-URI string  'data:image/png;base64,...'  or  None on failure.
     """
     try:
-        # ── Collect pre / sub-model / post layers ─────────────────
+        effnet = model.get_layer(sub_model_name)
+
+        # ── Collect pre-layers (before efficientnetb0) ────────────
         pre_layers, post_layers = [], []
         found_sub = False
-        sub_model = model.get_layer(sub_model_name)
-
         for layer in model.layers:
             if layer.name == sub_model_name:
                 found_sub = True
@@ -443,58 +443,80 @@ def generate_gradcam_overlay(
             else:
                 post_layers.append(layer)
 
+        # ── Stage 1: model input → top_conv feature maps ──────────
+        feat_extractor = keras.Model(
+            inputs=effnet.input,
+            outputs=effnet.get_layer('top_conv').output,
+            name='_gradcam_feat',
+        )
+
+        # ── Stage 2: top_conv feature maps → EfficientNet output ──
+        effnet_tail = keras.Model(
+            inputs=effnet.get_layer('top_conv').output,
+            outputs=effnet.output,
+            name='_gradcam_tail',
+        )
+
+        # ── Stage 3: EfficientNet output → final prediction ────────
+        effnet_out_shape = effnet.output_shape[1:]
+        _hi = keras.Input(shape=effnet_out_shape, name='_gradcam_head_in')
+        _x  = _hi
+        for layer in post_layers:
+            try:
+                _x = layer(_x, training=False)
+            except Exception:
+                pass
+        head_model = keras.Model(_hi, _x, name='_gradcam_head')
+
         # ── Forward through pre-EfficientNet layers ───────────────
-        x = tf.cast(img_array, tf.float32)
+        inp = tf.cast(img_array, tf.float32)
         for layer in pre_layers:
             try:
-                x = layer(x, training=False)
+                inp = layer(inp, training=False)
             except Exception:
-                pass   # skip InputLayer
+                pass   # skip InputLayer / augmentation no-ops
 
-        # ── GradientTape: watch feature maps, run head ────────────
+        # ── Extract conv feature maps (outside tape) ───────────────
+        conv_features = feat_extractor(inp, training=False)
+
+        # Wrap as tf.Variable — guarantees the tape tracks gradients through it
+        conv_var = tf.Variable(
+            tf.cast(conv_features, tf.float32), trainable=True, dtype=tf.float32
+        )
+
+        # ── Single connected forward pass inside tape ──────────────
         with tf.GradientTape() as tape:
-            conv_outputs = sub_model(x, training=False)   # (1, 7, 7, C)
-            tape.watch(conv_outputs)
+            effnet_out = effnet_tail(conv_var, training=False)
+            pred       = head_model(effnet_out, training=False)
+            loss       = pred[:, 0]   # binary positive-class score
 
-            y = conv_outputs
-            for layer in post_layers:
-                try:
-                    y = layer(y, training=False)
-                except Exception:
-                    pass
+        grads = tape.gradient(loss, conv_var)   # (1, H, W, C)
 
-            loss = y[:, 0]   # positive-class score (binary)
+        if grads is None:
+            print('[Grad-CAM] gradient is None — check model layers')
+            return None
 
-        grads        = tape.gradient(loss, conv_outputs)       # (1, 7, 7, C)
-        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))  # (C,)
+        # ── Grad-CAM: channel-wise importance weighting ────────────
+        pooled_grads = tf.reduce_mean(grads, axis=[0, 1, 2])           # (C,)
+        heatmap = tf.reduce_sum(
+            tf.cast(conv_var[0], tf.float32) * pooled_grads, axis=-1   # (H, W)
+        ).numpy().astype(np.float32)
 
-        # Cast to float32 — mixed_float16 training yields float16 tensors
-        conv_arr   = conv_outputs[0].numpy().astype(np.float32)
-        pooled_arr = pooled_grads.numpy().astype(np.float32)
+        heatmap = np.maximum(heatmap, 0)
+        if heatmap.max() > 0:
+            heatmap /= heatmap.max()
 
-        # Weighted sum → heatmap (H_feat × W_feat)
-        heatmap  = np.einsum('hwc,c->hw', conv_arr, pooled_arr)
-        heatmap  = np.maximum(heatmap, 0).astype(np.float32)
-        max_val  = np.max(heatmap)
-        if max_val > 0:
-            heatmap /= max_val
-
-        # Resize heatmap to original image size
+        # ── Resize → JET colormap → blend ─────────────────────────
         h_orig, w_orig  = original_rgb.shape[:2]
         heatmap_resized = cv2.resize(heatmap, (w_orig, h_orig))
+        heatmap_uint8   = np.uint8(255 * heatmap_resized)
+        colormap_bgr    = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
+        colormap_rgb    = cv2.cvtColor(colormap_bgr, cv2.COLOR_BGR2RGB)
+        overlay         = cv2.addWeighted(original_rgb, 0.55, colormap_rgb, 0.45, 0)
 
-        # Apply JET colormap
-        heatmap_uint8 = np.uint8(255 * heatmap_resized)
-        colormap_bgr  = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
-        colormap_rgb  = cv2.cvtColor(colormap_bgr, cv2.COLOR_BGR2RGB)
-
-        # Blend with original
-        overlay = cv2.addWeighted(original_rgb, 0.55, colormap_rgb, 0.45, 0)
-
-        # Encode as PNG → base64 data-URI
+        # ── Encode as PNG data-URI ─────────────────────────────────
         _, buffer = cv2.imencode('.png', cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-        encoded   = base64.b64encode(buffer).decode('utf-8')
-        return f'data:image/png;base64,{encoded}'
+        return 'data:image/png;base64,' + base64.b64encode(buffer).decode('utf-8')
 
     except Exception as exc:
         import traceback
@@ -589,7 +611,7 @@ def predict_pneumonia():
 
         # Load Youden's-J optimal threshold (computed on full test set)
         threshold_path = os.path.join(MODEL_DIR, 'pneumonia_threshold.json')
-        threshold = 0.9913   # default from test-set evaluation
+        threshold = 0.45   # default from test-set evaluation
         if os.path.exists(threshold_path):
             with open(threshold_path, 'r') as f:
                 threshold = json.load(f).get('optimal_threshold', 0.9913)
