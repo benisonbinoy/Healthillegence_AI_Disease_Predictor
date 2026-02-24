@@ -1,5 +1,5 @@
 """
-Healthiligence - System Check Script
+Healthillegence - System Check Script
 Verifies that all dependencies and requirements are properly installed
 """
 
@@ -104,7 +104,7 @@ def check_models():
 
 def main():
     print("\n" + "="*60)
-    print("HEALTHILIGENCE - SYSTEM CHECK")
+    print("Healthillegence - SYSTEM CHECK")
     print("="*60 + "\n")
     
     # Check Python version

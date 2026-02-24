@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "=================================="
-echo "Healthiligence - Setup Script"
+echo "Healthillegence - Setup Script"
 echo "=================================="
 echo ""
 

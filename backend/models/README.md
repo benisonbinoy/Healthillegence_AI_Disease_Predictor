@@ -1,5 +1,5 @@
 # Model Storage Directory
-# This directory contains trained machine learning models for the Healthiligence application
+# This directory contains trained machine learning models for the Healthillegence application
 
 Models stored:
 - diabetes_model.pkl - Random Forest model for diabetes prediction

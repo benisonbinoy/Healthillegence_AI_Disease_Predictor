@@ -1,5 +1,5 @@
 """
-Healthiligence - Main Training Script
+Healthillegence - Main Training Script
 Trains all machine learning models for disease prediction
 """
 
@@ -477,7 +477,7 @@ def main():
     trainer = ModelTrainer()
     
     print("\n" + "="*60)
-    print("HEALTHILIGENCE - MODEL TRAINING")
+    print("Healthillegence - MODEL TRAINING")
     print("="*60)
     
     # Train models

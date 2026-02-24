@@ -1,5 +1,5 @@
 """
-Healthiligence - Prediction API Server
+Healthillegence - Prediction API Server
 Flask API for serving predictions from trained models
 """
 
@@ -44,7 +44,7 @@ def load_model_info():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'message': 'Healthiligence API is running'})
+    return jsonify({'status': 'healthy', 'message': 'Healthillegence API is running'})
 
 @app.route('/api/model-info', methods=['GET'])
 def get_model_info():
@@ -668,7 +668,7 @@ def predict_pneumonia():
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("HEALTHILIGENCE PREDICTION API")
+    print("Healthillegence PREDICTION API")
     print("="*60)
     print("API Server starting on http://localhost:5000")
     print("="*60 + "\n")

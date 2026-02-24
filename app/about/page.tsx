@@ -34,7 +34,7 @@ export default function AboutPage() {
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
               About{' '}
               <span className="bg-gradient-to-r from-primary-500 to-primary-600 bg-clip-text text-transparent">
-                Healthiligence
+                Healthillegence
               </span>
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
@@ -55,7 +55,7 @@ export default function AboutPage() {
             </h2>
             <div className="space-y-4 text-gray-700 dark:text-gray-300">
               <p>
-                Healthiligence is a comprehensive health analysis platform that leverages machine
+                Healthillegence is a comprehensive health analysis platform that leverages machine
                 learning and deep learning technologies to provide accurate predictions for various
                 diseases. The system is designed to assist healthcare professionals and individuals
                 in early disease detection and risk assessment.
@@ -173,17 +173,32 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              {/* Social Links Placeholder */}
+              {/* Social Links */}
               <div className="mt-6 flex gap-4">
-                <button className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all">
+                <a
+                  href="https://github.com/benisonbinoy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+                >
                   <Github className="w-5 h-5" />
-                </button>
-                <button className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all">
+                </a>
+                <a
+                  href="https://in.linkedin.com/in/benisonbinoy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+                >
                   <Linkedin className="w-5 h-5" />
-                </button>
-                <button className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all">
-                  <Mail className="w-5 h-5" />
-                </button>
+                </a>
+                <a
+                  href="https://benison.me"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+                >
+                  <Globe className="w-5 h-5" />
+                </a>
               </div>
             </div>
           </motion.div>

@@ -52,7 +52,7 @@ export default function SignInPage() {
               <div className="relative w-16 h-16 rounded-full overflow-hidden ring-4 ring-white/30">
                 <Image
                   src={logo}
-                  alt="Healthiligence"
+                  alt="Healthillegence"
                   fill
                   className="object-contain"
                 />
@@ -61,7 +61,7 @@ export default function SignInPage() {
             <div className="relative w-48 h-12 mx-auto mb-2">
               <Image
                 src={logo2}
-                alt="Healthiligence"
+                alt="Healthillegence"
                 fill
                 className="object-contain brightness-0 invert"
               />
@@ -166,7 +166,7 @@ export default function SignInPage() {
 
         {/* Footer */}
         <p className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
-          © 2026 Healthiligence. All rights reserved.
+          © 2026 Healthillegence. All rights reserved.
         </p>
       </motion.div>
     </div>

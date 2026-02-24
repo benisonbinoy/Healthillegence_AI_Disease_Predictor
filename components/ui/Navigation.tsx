@@ -34,7 +34,7 @@ export default function Navigation() {
             <div className="relative w-10 h-10 rounded-lg overflow-hidden ring-2 ring-primary-500/20 group-hover:ring-primary-500/50 transition-all">
               <Image
                 src={logo}
-                alt="Healthiligence Logo"
+                alt="Healthillegence Logo"
                 fill
                 className="object-contain"
               />
@@ -42,7 +42,7 @@ export default function Navigation() {
             <div className="relative w-32 h-8 hidden sm:block">
               <Image
                 src={logo2}
-                alt="Healthiligence"
+                alt="Healthillegence"
                 fill
                 className="object-contain"
               />

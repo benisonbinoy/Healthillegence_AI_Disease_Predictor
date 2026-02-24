@@ -1,6 +1,6 @@
-# Contributing to Healthiligence
+# Contributing to Healthillegence
 
-Thank you for your interest in contributing to Healthiligence!
+Thank you for your interest in contributing to Healthillegence!
 
 ## Development Setup
 

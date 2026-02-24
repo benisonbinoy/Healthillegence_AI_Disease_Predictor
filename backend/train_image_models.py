@@ -1,5 +1,5 @@
 """
-Healthiligence - Image Model Training Script
+Healthillegence - Image Model Training Script
 Trains CNN models for Malaria and Pneumonia detection from images
 """
 
@@ -238,7 +238,7 @@ def main():
     trainer = ImageModelTrainer()
     
     print("\n" + "="*60)
-    print("HEALTHILIGENCE - IMAGE MODEL TRAINING")
+    print("Healthillegence - IMAGE MODEL TRAINING")
     print("="*60)
     
     results = {}

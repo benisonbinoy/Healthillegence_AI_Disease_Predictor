@@ -1,8 +1,8 @@
-# Healthiligence - AI Health Analyzer
+# Healthillegence - AI Health Analyzer
 
 An advanced AI-powered health prediction web application that uses machine learning to predict the possibility of various diseases including diabetes, kidney disease, liver disease, malaria, and pneumonia.
 
-![Healthiligence](logo.png)
+![Healthillegence](logo.png)
 
 ## 🌟 Features
 

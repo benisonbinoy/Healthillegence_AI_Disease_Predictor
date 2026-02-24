@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Healthiligence - AI Health Analyzer",
+  title: "Healthillegence - AI Health Analyzer",
   description: "Advanced AI-powered health prediction system for multiple diseases",
 };
 

@@ -1,5 +1,5 @@
 """
-Healthiligence - Dataset Download Guide
+Healthillegence - Dataset Download Guide
 
 To train the models, you need to download the following datasets from Kaggle:
 
