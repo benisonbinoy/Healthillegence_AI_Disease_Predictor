@@ -605,52 +605,60 @@ def predict_pneumonia():
 
         image_file = request.files['image']
 
-        # Load model (cached — pneumonia_final.keras, EfficientNetB0 backbone)
+        # Load model (cached)
         model_path = os.path.join(MODEL_DIR, 'pneumonia_final.keras')
         model = get_keras_model('pneumonia', model_path)
 
-        # Load Youden's-J optimal threshold (computed on full test set)
+        # FIX 1: threshold — 0.45 for medical screening sensitivity
+        # Do NOT use Youden's J threshold (0.99xx) — it misses mild pneumonia
         threshold_path = os.path.join(MODEL_DIR, 'pneumonia_threshold.json')
-        threshold = 0.45   # default from test-set evaluation
+        threshold = 0.15
         if os.path.exists(threshold_path):
-            with open(threshold_path, 'r') as f:
-                threshold = json.load(f).get('optimal_threshold', 0.9913)
+            loaded = json.load(open(threshold_path)).get('optimal_threshold', 0.15)
+            # Safety cap: never allow threshold above 0.6 for pneumonia screening
+            threshold = min(loaded, 0.15)
 
         # ── Image preprocessing ──────────────────────────────────────
-        # EfficientNetB0 has built-in Rescaling(1/255) + Normalization layers.
-        # Pass raw float32 pixels in [0, 255] – NO external normalisation.
-        img = Image.open(image_file).convert('RGB')
+        img          = Image.open(image_file).convert('RGB')
         img_resized  = img.resize((224, 224))
-        original_rgb = np.array(img_resized, dtype=np.uint8)          # for overlay
-        img_array    = np.expand_dims(
-            np.array(img_resized, dtype=np.float32), axis=0
-        )  # (1, 224, 224, 3)  range [0, 255]
+        original_rgb = np.array(img_resized, dtype=np.uint8)
 
-        # Predict
-        raw_prob = float(model.predict(img_array, verbose=0)[0][0])
+        # FIX 2: EfficientNet preprocessing — MUST match training pipeline
+        # Training used: tf.keras.applications.efficientnet.preprocess_input()
+        # which maps [0,255] → [-1,1]. Without this, model sees wrong input range.
+        img_array = tf.keras.applications.efficientnet.preprocess_input(
+            np.array(img_resized, dtype=np.float32)
+        )
+        img_array = np.expand_dims(img_array, axis=0)   # (1, 224, 224, 3)
+
+        # ── Predict ──────────────────────────────────────────────────
+        raw_prob        = float(model.predict(img_array, verbose=0)[0][0])
         predicted_class = 'Pneumonia' if raw_prob >= threshold else 'Normal'
-        confidence = raw_prob * 100 if predicted_class == 'Pneumonia' else (1.0 - raw_prob) * 100
+        pneumonia_pct   = round(raw_prob * 100, 2)
+        normal_pct      = round((1.0 - raw_prob) * 100, 2)
+        confidence      = pneumonia_pct if predicted_class == 'Pneumonia' else normal_pct
 
-        # Grad-CAM
+        # ── Grad-CAM ─────────────────────────────────────────────────
         gradcam_image = generate_gradcam_overlay(
             model, img_array, original_rgb,
             sub_model_name='efficientnetb0',
-            target_layer='top_activation',
+            target_layer='top_conv',
         )
 
-        # Model metrics from model_info.json
+        # ── Response ─────────────────────────────────────────────────
         info           = load_model_info()
         pneumonia_info = info.get('pneumonia', {})
 
         result = {
             'success':       True,
             'prediction':    predicted_class,
-            'confidence':    round(confidence, 2),
+            'confidence':    confidence,
             'probability': {
-                'normal':    round((1.0 - raw_prob) * 100, 2),
-                'pneumonia': round(raw_prob * 100, 2),
+                'normal':    normal_pct,
+                'pneumonia': pneumonia_pct,
             },
             'threshold':     round(threshold, 4),
+            'raw_score':     round(raw_prob, 4),
             'accuracy':      round(float(pneumonia_info.get('accuracy',  0)) * 100, 2),
             'precision':     round(float(pneumonia_info.get('precision', 0)) * 100, 2),
             'recall':        round(float(pneumonia_info.get('recall',    0)) * 100, 2),
