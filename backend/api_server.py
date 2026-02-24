@@ -609,27 +609,19 @@ def predict_pneumonia():
         model_path = os.path.join(MODEL_DIR, 'pneumonia_final.keras')
         model = get_keras_model('pneumonia', model_path)
 
-        # FIX 1: threshold — 0.45 for medical screening sensitivity
-        # Do NOT use Youden's J threshold (0.99xx) — it misses mild pneumonia
-        threshold_path = os.path.join(MODEL_DIR, 'pneumonia_threshold.json')
         threshold = 0.15
-        if os.path.exists(threshold_path):
-            loaded = json.load(open(threshold_path)).get('optimal_threshold', 0.15)
-            # Safety cap: never allow threshold above 0.6 for pneumonia screening
-            threshold = min(loaded, 0.15)
-
+        
+        print(f"[THRESHOLD] {threshold}")
         # ── Image preprocessing ──────────────────────────────────────
         img          = Image.open(image_file).convert('RGB')
         img_resized  = img.resize((224, 224))
         original_rgb = np.array(img_resized, dtype=np.uint8)
 
-        # FIX 2: EfficientNet preprocessing — MUST match training pipeline
-        # Training used: tf.keras.applications.efficientnet.preprocess_input()
-        # which maps [0,255] → [-1,1]. Without this, model sees wrong input range.
-        img_array = tf.keras.applications.efficientnet.preprocess_input(
-            np.array(img_resized, dtype=np.float32)
-        )
-        img_array = np.expand_dims(img_array, axis=0)   # (1, 224, 224, 3)
+        # Model has built-in Rescaling + Normalization layers (include_preprocessing=True).
+        # Pass raw [0, 255] float32 — do NOT call preprocess_input() or it double-scales.
+        img_array = np.expand_dims(
+            np.array(img_resized, dtype=np.float32), axis=0
+        )  # (1, 224, 224, 3)  range [0, 255]
 
         # ── Predict ──────────────────────────────────────────────────
         raw_prob        = float(model.predict(img_array, verbose=0)[0][0])
